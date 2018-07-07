@@ -1,0 +1,33 @@
+#!/bin/sh
+
+IFACE=wlp3s0
+
+# Root PRIO qdisc
+# Automatically create 3 childrend
+tc qdisc add dev $IFACE root handle 1: prio
+
+# SFQ for the 3 childs
+# SFQ gives equal share of "turns" to each flows
+tc qdisc add dev $IFACE parent 1:1 handle 10: sfq
+tc qdisc add dev $IFACE parent 1:2 handle 20: sfq
+tc qdisc add dev $IFACE parent 1:3 handle 30: sfq
+
+# Attach filters root and sed traffic to children classes
+tc filter add dev $IFACE protocol ip parent 1: prio 1 u32 match ip dport 80 0xffff flowid 1:1
+tc filter add dev $IFACE protocol ip parent 1: prio 1 u32 match ip dport 443 0xffff flowid 1:1
+tc filter add dev $IFACE protocol ip parent 1: prio 1 u32 match ip dport 53 0xffff flowid 1:1
+
+
+#### Graphical view of the above ####
+
+#                   1: root prio
+#                 / | \
+#                /  |  \
+#               /   |   \
+#              /    |    \
+#            1:1   1:2   1:3  classes
+#            /      |      \
+#           /       |       \
+#          /        |        \
+#        10:       20:       30:  qdiscs
+#        sfq       sfq       sfq
